@@ -88,5 +88,3 @@ def wood_calc(planks):
   """
   woodprice = 10 * int(planks)
   return woodprice
-
-    
