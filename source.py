@@ -1,90 +1,122 @@
-#imports - - - - - - -
-import atexit, io, sys
-import sqlite3
-from tabulate import tabulate
+import math
 
-#Define Database selection - - - - - -
-def select_from_db(stmt, db):
-    """ Takes a SQL query and returns results for steel or labor
+class WorkEstimate:
+  def __init__(self, name):
+    self.name = name
+    self.woodSelect, self.steelSelect, self.laborSelect, self.concreteMaterial, self.laborTime, self.steelAmount, self.woodPlank  = self.inputs()
+
+  def inputs(self):
+    """The inputs which will be stored for future use are defined by this function
     """
-    conn = sqlite3.connect(db + '.db')
-    cur = conn.cursor()
-    cur.execute(stmt)
-    cols = [i[0] for i in cur.description]
-    rows = cur.fetchall()
-    conn.close()
-    print(tabulate(rows, headers=cols, tablefmt='github'))
+    #First the dictionaries need to be constructed
+    laborType = {'electrician': 22,
+                 'plumber': 70,
+                 'carpenter': 25,
+                 'framer': 18,
+                 'general contractor': 50,
+                 'project manager': 43,
+                 'general labor': 18}
+    steelMaterial = {'pipe 12in': 550,
+                     'pipe 6in': 600,
+                     'w8 beam': 400,
+                     'w10 beam': 500,
+                     'w14 beam': 700,
+                     'rebar #3': 1575,
+                     'rebar #4': 1600,
+                     'rebar #5': 1675}
+    woodMaterial = {'treated lumber': 15,
+                    'plywood': 600,
+                    '2x4': 400,
+                    'flooring': 500,
+                    'insulation': 700,
+                    'roofing': 1575}
+    #I want the dictionaries to be displayed upon intialization
+    print(laborType)
+    print(steelMaterial)
+    print(woodMaterial)
 
-#Constructing Steel Database - - - - - - - - - - - - - - - - -
-conn = sqlite3.connect('steel.db')
-print("Opened database successfully");
+    #Need the time for the project, then convert it into hours for easier calcs
+    laborInput = int(input('How long is your project? (in weeks): '))
+    laborTime = laborInput * 168
 
-conn.execute('''
-CREATE TABLE IF NOT EXISTS steel_data([name],
-                      [description],
-                      [cost]);''')
+    #Concrete needs area for price calc
+    concreteMaterial = input('How much area needs to be covered? (in sq ft): ')
 
-conn.commit()
+    #The needed variables are what will be outputted for their respective calcs
+    woodPlank = input('How many planks of wood are needed?: ')
+    woodNeeded = input('What kind of wood do you need? Choose from our selection: ')
+    if woodNeeded.lower() not in woodMaterial:
+      raise ValueError('Material not found')
 
-print("Table created successfully");
+    woodSelect = woodMaterial[woodNeeded]
 
-conn.execute("DELETE FROM steel_data")
+    steelAmount = int(input('How much steel is needed? (per ton): '))
+    steelNeeded = input('What kind of steel do you need? Choose from our selection: ')
+    if steelNeeded.lower() not in steelMaterial:
+      raise ValueError('Material not found')
 
-#Inserting pre defined values
-conn.execute("INSERT INTO steel_data VALUES('Pipe - 12in', '12 inch steel galvanized pipe', '550 per ton');")
-conn.execute("INSERT INTO steel_data VALUES('Pipe - 6in', '6 inch steel galvanized pipe', '600 per ton');")
-conn.execute("INSERT INTO steel_data VALUES('W8', 'Wide Flange Steel beam, 20 ft long', '400 per beam');")
-conn.execute("INSERT INTO steel_data VALUES('W10', 'Wide Flange Steel beam, 20 ft long', '500 per beam');")
-conn.execute("INSERT INTO steel_data VALUES('W14', 'Wide Flange Steel beam, 20 ft long', '700 per beam');")
-conn.execute("INSERT INTO steel_data VALUES('Rebar #3', '3/8 inch diameter', '1575 per ton' );")
-conn.execute("INSERT INTO steel_data VALUES('Rebar #4', '0.5 inch diameter', '1600 per ton' );")
-conn.execute("INSERT INTO steel_data VALUES('Rebar #5', '5/8 inch diameter', '1675 per ton' );")
+    steelSelect = steelMaterial[steelNeeded]
 
-conn.commit()
+    laborNeeded = input('What kind of labor do you need? Choose from our selection: ')
+    if laborNeeded.lower() not in laborType:
+      raise ValueError('Job not found')
 
-#Constructing Labor Database - - - - - - - - - - - - - - - -
-conn = sqlite3.connect('labor.db')
-print("Opened database successfully");
+    laborSelect = laborType[laborNeeded]
 
-conn.execute('''
-CREATE TABLE IF NOT EXISTS labor_data([name],
-                      [estimated_pay]);''')
-
-conn.commit()
-
-print("Table created successfully");
-
-conn.execute("DELETE FROM labor_data")
+    return woodSelect, steelSelect, laborSelect, concreteMaterial, laborTime, steelAmount, woodPlank
 
 
-#Inserting pre defined values
-conn.execute("INSERT INTO labor_data VALUES('Electrician', '20 per hour');")
-conn.execute("INSERT INTO labor_data VALUES('Plumber', '20 per hour');")
-conn.execute("INSERT INTO labor_data VALUES('Carpenter','20 per hour');")
-conn.execute("INSERT INTO labor_data VALUES('Framer', '20 per hour');")
-conn.execute("INSERT INTO labor_data VALUES('General Contracter', '20 per hour');")
-conn.execute("INSERT INTO labor_data VALUES('Project Manager', '20 per hour' );")
-conn.execute("INSERT INTO labor_data VALUES('General Labor', '20 per hour' );")
+  def steel_calc(self, material):
+    """This function defines the total amount of steel needed from the user
+    """
+    steelSub = int(self.steelAmount) * material
+    laborSteel = 1400
 
-conn.commit()
+    print('The subtotal cost for steel is ', steelSub)
+    print('The cost for installation is estimated to be ', laborSteel)
+    print('This brings the total steel cost to ', steelSub + laborSteel)
 
-#Define Concrete Calculation - - - - - - - - - -
-def concrete_calc(area):
-  """Returns the subtotal price of concrete needed by the user
-  """
-  concreteprice = 77 * int(area)
-  return concreteprice
+    return steelSub
 
-#Define Labor Calculation - - - - - - - - -
-def labor_calc(rate):
-  """Returns the subtotal price of labor needed by the user
-  """
-  laborprice = rate * (int(length)*168)
-  return laborprice
+  def concrete_calc(self, area):
+    """This function calculates the subtotal cost of concrete needed from the user
+    """
+    concreteSub = area * 77
+    laborConcrete = 5 * area
+    totalConcrete = concreteSub + laborConcrete
 
-#Define Wood calculation - - - - - - - - - - -
-def wood_calc(planks):
-  """Returns the subtotal price of wood needed by user
-  """
-  woodprice = 10 * int(planks)
-  return woodprice
+
+    print('The subtotal cost the concrete needed is ', concreteSub)
+    print('The cost for installation is estimated to be ', laborConcrete)
+    print('This brings the total concrete cost to ', totalConcrete)
+
+    return concreteSub
+
+  def wood_calc(self, choice):
+    """This function defines the total amount of wood needed from the user
+    """
+    woodSub = int(self.woodPlank) * choice
+    #Installation prices are assumed constant
+    laborWood = 1400
+    totalWood = woodSub + laborWood
+
+    print('The subtotal cost for the wood is ', woodSub)
+    print('The cost for installation is estimated to be ', laborWood)
+    print('This brings the total wood cost to ', totalWood)
+
+    return woodSub
+
+  def labor_calc(self, labor):
+    """This function seperately calculates the cost for a certain type of labor
+    needed by the user
+    """
+    laborSub = labor * self.laborTime
+    print('The cost for this kind of labor is ', laborSub)
+
+    return laborSub
+
+  def output(self):
+    laborPrice = self.labor_calc(self.laborSelect)
+    woodPrice = self.wood_calc(int(self.woodSelect))
+    steelPrice = self.steel_calc(int(self.steelSelect))
+    concretePrice = self.concrete_calc(int(self.concreteMaterial))
